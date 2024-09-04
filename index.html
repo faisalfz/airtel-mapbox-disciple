@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Map</title>
+    <title>Map with Search</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
       *,
@@ -21,12 +21,22 @@
       }
 
       #map {
-        height: 100%;
+        height: 90%;
         width: 100%;
       }
 
+      #controls {
+        height: 10%;
+        padding: 10px;
+        background: #f8f8f8;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+      }
+
       .leaflet-popup-content-wrapper {
-        max-height: 200px; /* Adjust height as needed */
+        max-height: 200px;
         overflow-y: auto;
       }
 
@@ -62,9 +72,31 @@
       .location-detail .full-description {
         display: none;
       }
+
+      #searchBox {
+        padding: 5px;
+        width: 200px;
+      }
+
+      #locationDropdown {
+        padding: 5px;
+        width: 200px;
+      }
     </style>
   </head>
   <body>
+    <!-- Controls for Search and Dropdown -->
+    <div id="controls">
+      <input
+        type="text"
+        id="searchBox"
+        placeholder="Search location by name"
+      />
+      <select id="locationDropdown">
+        <option value="">Select a location</option>
+      </select>
+    </div>
+
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -72,14 +104,27 @@
       // Initialize Leaflet map
       var map = L.map("map").setView([34.0522, -118.2437], 10); // Set default view to Los Angeles
 
-      // Add base map layer using Mapbox "Navigation Guidance Day"
+      // Add base map layer using Mapbox Streets style
       L.tileLayer(
-        "https://api.mapbox.com/styles/v1/mapbox/navigation-guidance-day-v4/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1Ijoic2FhZGZpYXoiLCJhIjoiY2x4NTl1ajQ5MDd2ZjJsczVwZjJxdjg5ZyJ9.qRpkurVrJGU2WHtezx3-NQ",
+        "https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoic2FhZGZpYXoiLCJhIjoiY2x4NTl1ajQ5MDd2ZjJsczVwZjJxdjg5ZyJ9.qRpkurVrJGU2WHtezx3-NQ",
         {
           attribution:
             '&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> contributors',
+          tileSize: 512,
+          zoomOffset: -1,
         }
       ).addTo(map);
+
+      var markers = [];
+      var locations = [];
+
+      // Create custom marker icon (optional)
+      var customIcon = L.icon({
+        iconUrl: "https://cdn-icons-png.flaticon.com/512/64/64113.png", // Change to your custom icon
+        iconSize: [25, 41], // size of the icon
+        iconAnchor: [12, 41], // point of the icon which will correspond to marker's location
+        popupAnchor: [1, -34], // point from which the popup should open relative to the iconAnchor
+      });
 
       // Function to create location details HTML
       function createLocationDetails(location) {
@@ -116,14 +161,26 @@
       fetch("locations-4.json")
         .then((response) => response.json())
         .then((data) => {
-          // Add markers from JSON data
-          data.forEach((location) => {
-            var marker = L.marker([
-              location.latitude,
-              location.longitude,
-            ]).addTo(map);
+          locations = data;
+
+          // Add markers from JSON data and populate the dropdown
+          locations.forEach((location, index) => {
+            var marker = L.marker(
+              [location.latitude, location.longitude],
+              // { icon: customIcon }
+            ).addTo(map);
             marker.bindPopup(createLocationDetails(location));
 
+            // Store the marker in the markers array
+            markers.push(marker);
+
+            // Add location to the dropdown
+            var option = document.createElement("option");
+            option.value = index;
+            option.text = location.name;
+            document.getElementById("locationDropdown").appendChild(option);
+
+            // Event listener for show more in popups
             marker.on("popupopen", function () {
               document.querySelectorAll(".show-more").forEach((element) => {
                 element.addEventListener("click", function () {
@@ -138,6 +195,35 @@
         })
         .catch((error) => {
           console.error("Error fetching data:", error);
+        });
+
+      // Search box functionality
+      document.getElementById("searchBox").addEventListener("input", (e) => {
+        const searchValue = e.target.value.toLowerCase();
+        const locationIndex = locations.findIndex((location) =>
+          location.name.toLowerCase().includes(searchValue)
+        );
+
+        if (locationIndex !== -1) {
+          map.setView(
+            [locations[locationIndex].latitude, locations[locationIndex].longitude],
+            13
+          );
+          markers[locationIndex].openPopup();
+        }
+      });
+
+      // Dropdown functionality
+      document
+        .getElementById("locationDropdown")
+        .addEventListener("change", (e) => {
+          const selectedIndex = e.target.value;
+
+          if (selectedIndex !== "") {
+            const selectedLocation = locations[selectedIndex];
+            map.setView([selectedLocation.latitude, selectedLocation.longitude], 13);
+            markers[selectedIndex].openPopup();
+          }
         });
     </script>
   </body>
