@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Custom Starting Point with Destination List</title>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
+  <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.0.0/mapbox-gl-directions.js"></script>
+  <link
+    href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.0.0/mapbox-gl-directions.css"
+    rel="stylesheet"
+  />
+  <style>
+    body { margin: 0; padding: 0; display: flex; }
+    #map { position: relative; width: 75%; height: 100vh; }
+    #destination-list { padding: 10px; width: 25%; height: 100vh; overflow-y: auto; background-color: #f5f5f5; }
+    #destination-list h2 { margin-bottom: 10px; }
+    #destination-list ul { list-style-type: none; padding: 0; }
+    #destination-list ul li { padding: 10px 0; cursor: pointer; }
+    #destination-list ul li:hover { background-color: #ddd; }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+<div id="destination-list">
+  <h2>Select Destination</h2>
+  <ul id="destinationItems"></ul>
+</div>
+
+<script>
+  // Mapbox access token
+  mapboxgl.accessToken = 'pk.eyJ1IjoiZmFpc2FsZmlhejQwIiwiYSI6ImNtMG13bzIzajA3MDYybXM5d2dkaTBsaTYifQ.rYNtiYU6AvtLFp7H3A7b0g';
+
+  // Initialize the map
+  const map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/streets-v12',
+    center: [-24, 42], // initial center
+    zoom: 1
+  });
+
+  // Add geolocate control to default to user's location
+  const geolocateControl = new mapboxgl.GeolocateControl({
+    positionOptions: {
+      enableHighAccuracy: true
+    },
+    trackUserLocation: true,
+    showUserHeading: true
+  });
+
+  map.addControl(geolocateControl);
+
+  // Add the Directions plugin for routing
+  const directions = new MapboxDirections({
+    accessToken: mapboxgl.accessToken,
+    unit: 'metric',
+    profile: 'mapbox/driving'
+  });
+
+  map.addControl(directions, 'top-left');
+
+  // Variables to store user-selected starting location and destination
+  let userStartLocation = null;
+
+  // Set the map to the user's current location by default
+  geolocateControl.on('geolocate', function (event) {
+    userStartLocation = [event.coords.longitude, event.coords.latitude];
+  });
+
+  // Allow user to manually pick a starting location by clicking on the map
+  map.on('click', function (event) {
+    userStartLocation = [event.lngLat.lng, event.lngLat.lat];
+    alert(`Starting location set at: [${event.lngLat.lng}, ${event.lngLat.lat}]`);
+  });
+
+  // Fetch locations from the JSON file and populate the destination list
+  fetch('locations-4.json')
+    .then(response => response.json())
+    .then(locations => {
+      const destinationList = document.getElementById('destinationItems');
+
+      locations.forEach(location => {
+        // Create a list item for each destination
+        const listItem = document.createElement('li');
+        listItem.textContent = location.name;
+        listItem.addEventListener('click', () => {
+          if (userStartLocation) {
+            startNavigation(location.latitude, location.longitude);
+          } else {
+            alert("Please set your starting location by clicking on the map or enabling geolocation.");
+          }
+        });
+
+        // Add the list item to the list
+        destinationList.appendChild(listItem);
+
+        // Optionally add a marker for the destination
+        new mapboxgl.Marker()
+          .setLngLat([location.longitude, location.latitude])
+          .setPopup(new mapboxgl.Popup({ offset: 25 }).setText(location.name))
+          .addTo(map);
+      });
+    })
+    .catch(error => {
+      console.error('Error fetching locations:', error);
+    });
+
+  // Function to start navigation from user's starting location to the selected destination
+  function startNavigation(destinationLat, destinationLng) {
+    // Set the origin and destination for the navigation
+    directions.setOrigin(userStartLocation); // Set user's current location or clicked location as the origin
+    directions.setDestination([destinationLng, destinationLat]); // Set the selected location as the destination
+  }
+</script>
+
+</body>
+</html>

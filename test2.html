@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>Map with Custom Layers and Navigation</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
+  <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.0.0/mapbox-gl-directions.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.0.0/mapbox-gl-directions.css" rel="stylesheet">
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1;
+      background: white;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    #destinationSelect {
+      margin-bottom: 10px;
+      width: 200px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+<div id="controls">
+  <label for="destinationSelect">Choose Destination:</label>
+  <select id="destinationSelect">
+    <option value="">Select a destination</option>
+  </select>
+  <button id="useMyLocation">Use My Location as Start</button>
+  <p>Or click on the map to select a starting point.</p>
+</div>
+
+<script>
+  // Mapbox access token
+  mapboxgl.accessToken = 'pk.eyJ1IjoiZmFpc2FsZmlhejQwIiwiYSI6ImNtMG13bzIzajA3MDYybXM5d2dkaTBsaTYifQ.rYNtiYU6AvtLFp7H3A7b0g';
+
+  // Initialize the map with your custom settings
+  const map = new mapboxgl.Map({
+    container: 'map',
+    center: [-0.126326, 51.533582],
+    zoom: 15.27,
+    pitch: 42,
+    bearing: -50,
+    style: 'mapbox://styles/mapbox/standard',
+    minZoom: 15,
+    maxZoom: 16
+  });
+
+  map.on('style.load', () => {
+    map.setConfigProperty('basemap', 'lightPreset', 'dusk');
+
+    map.addSource('eraser', {
+      'type': 'geojson',
+      'data': {
+        'type': 'FeatureCollection',
+        'features': [
+          {
+            'type': 'Feature',
+            'properties': {},
+            'geometry': {
+              'coordinates': [
+                [
+                  [-0.12573446384880071, 51.53222253720682],
+                  [-0.12458889852425159, 51.53219470021111],
+                  [-0.12358091771250201, 51.53492205161518],
+                  [-0.12701761368793996, 51.53391996847543],
+                  [-0.12573446384880071, 51.53222253720682]
+                ]
+              ],
+              'type': 'Polygon'
+            }
+          }
+        ]
+      }
+    });
+
+    map.addSource('model', {
+      'type': 'geojson',
+      'data': {
+        'type': 'Feature',
+        'properties': {
+          'model-uri': 'https://docs.mapbox.com/mapbox-gl-js/assets/tower.glb'
+        },
+        'geometry': {
+          'coordinates': [-0.12501974, 51.5332374],
+          'type': 'Point'
+        }
+      }
+    });
+
+    map.addLayer({
+      'id': 'eraser',
+      'type': 'clip',
+      'source': 'eraser',
+      'layout': {
+        'clip-layer-types': ['symbol', 'model']
+      }
+    });
+
+    map.addLayer({
+      'id': 'tower',
+      'type': 'model',
+      'source': 'model',
+      'minzoom': 15,
+      'layout': {
+        'model-id': ['get', 'model-uri']
+      },
+      'paint': {
+        'model-opacity': 1,
+        'model-rotation': [0.0, 0.0, 35.0],
+        'model-scale': [0.8, 0.8, 1.2],
+        'model-color-mix-intensity': 0,
+        'model-cast-shadows': true,
+        'model-emissive-strength': 0.8
+      }
+    });
+  });
+
+  // Initialize Directions API
+  const directions = new MapboxDirections({
+    accessToken: mapboxgl.accessToken,
+    unit: 'metric',
+    profile: 'mapbox/driving'
+  });
+  map.addControl(directions, 'top-left');
+
+  let startLocation = null;
+  let destination = null;
+
+  // Fetch locations from the JSON file and populate the dropdown
+  fetch('locations-4.json')
+    .then(response => response.json())
+    .then(locations => {
+      const destinationSelect = document.getElementById('destinationSelect');
+      locations.forEach(location => {
+        const option = document.createElement('option');
+        option.value = JSON.stringify({ latitude: location.latitude, longitude: location.longitude });
+        option.text = location.name;
+        destinationSelect.add(option);
+      });
+
+      // When user selects a destination
+      destinationSelect.addEventListener('change', function() {
+        const selectedOption = JSON.parse(this.value);
+        destination = [selectedOption.longitude, selectedOption.latitude];
+        updateRoute(); // Check and update the route
+      });
+    })
+    .catch(error => {
+      console.error('Error fetching locations:', error);
+    });
+
+  // Use current location as start
+  const geolocateControl = new mapboxgl.GeolocateControl({
+    positionOptions: { enableHighAccuracy: true },
+    trackUserLocation: false
+  });
+  map.addControl(geolocateControl);
+
+  // Button to use current location as starting point
+  document.getElementById('useMyLocation').addEventListener('click', function() {
+    geolocateControl.trigger();
+  });
+
+  // Listen for geolocation event
+  geolocateControl.on('geolocate', function(event) {
+    startLocation = [event.coords.longitude, event.coords.latitude];
+    updateRoute(); // Check and update the route
+  });
+
+  // Allow user to click on the map for start location
+  map.on('click', function(e) {
+    startLocation = [e.lngLat.lng, e.lngLat.lat];
+    updateRoute(); // Check and update the route
+  });
+
+  // Function to update the route
+  function updateRoute() {
+    if (startLocation && destination) {
+      directions.setOrigin(startLocation); // Set starting point
+      directions.setDestination(destination); // Set destination point
+    }
+  }
+</script>
+
+</body>
+</html>

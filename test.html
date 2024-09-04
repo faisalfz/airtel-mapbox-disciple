@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Custom Route Navigation</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
+  <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.0.0/mapbox-gl-directions.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.0.0/mapbox-gl-directions.css" rel="stylesheet">
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1;
+      background: white;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    #destinationSelect {
+      margin-bottom: 10px;
+      width: 200px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+<div id="controls">
+  <label for="destinationSelect">Choose Destination:</label>
+  <select id="destinationSelect">
+    <option value="">Select a destination</option>
+  </select>
+  <button id="useMyLocation">Use My Location as Start</button>
+  <p>Or click on the map to select a starting point.</p>
+</div>
+
+<script>
+  // Mapbox access token
+  mapboxgl.accessToken = 'pk.eyJ1IjoiZmFpc2FsZmlhejQwIiwiYSI6ImNtMG13bzIzajA3MDYybXM5d2dkaTBsaTYifQ.rYNtiYU6AvtLFp7H3A7b0g';
+
+  // Initialize the map
+  const map = new mapboxgl.Map({
+    container: 'map', // container ID
+    style: 'mapbox://styles/mapbox/streets-v12', // style URL
+    center: [-24, 42], // starting position [lng, lat]
+    zoom: 1 // starting zoom
+  });
+
+  // Initialize Mapbox Directions
+  const directions = new MapboxDirections({
+    accessToken: mapboxgl.accessToken,
+    unit: 'metric',
+    profile: 'mapbox/driving'
+  });
+
+  // Add directions control to the map
+  map.addControl(directions, 'top-left');
+
+  let startLocation = null; // Variable to store the start location
+  let destination = null; // Variable to store the selected destination
+
+  // Fetch location data from JSON file
+  fetch('locations-4.json')
+    .then(response => response.json())
+    .then(locations => {
+      const destinationSelect = document.getElementById('destinationSelect');
+      
+      // Populate dropdown with destinations from JSON
+      locations.forEach(location => {
+        const option = document.createElement('option');
+        option.value = JSON.stringify({ latitude: location.latitude, longitude: location.longitude });
+        option.text = location.name;
+        destinationSelect.add(option);
+      });
+      
+      // Event listener for dropdown selection
+      destinationSelect.addEventListener('change', function() {
+        const selectedOption = JSON.parse(this.value);
+        destination = [selectedOption.longitude, selectedOption.latitude];
+        updateRoute(); // Update route if both start and destination are set
+      });
+    })
+    .catch(error => {
+      console.error('Error fetching locations:', error);
+    });
+
+  // Geolocate control to get user's current location
+  const geolocateControl = new mapboxgl.GeolocateControl({
+    positionOptions: {
+      enableHighAccuracy: true
+    },
+    trackUserLocation: false
+  });
+
+  // Add geolocate control to the map
+  map.addControl(geolocateControl);
+
+  // Button to use current location as starting point
+  document.getElementById('useMyLocation').addEventListener('click', function() {
+    geolocateControl.trigger(); // Trigger geolocation
+  });
+
+  // Listen for geolocation event
+  geolocateControl.on('geolocate', function(event) {
+    startLocation = [event.coords.longitude, event.coords.latitude];
+    updateRoute(); // Update route if both start and destination are set
+  });
+
+  // Allow user to click on the map to set a custom start location
+  map.on('click', function(e) {
+    startLocation = [e.lngLat.lng, e.lngLat.lat];
+    updateRoute(); // Update route if both start and destination are set
+  });
+
+  // Function to update the route
+  function updateRoute() {
+    if (startLocation && destination) {
+      directions.setOrigin(startLocation); // Set the start location (A)
+      directions.setDestination(destination); // Set the destination (B)
+    }
+  }
+</script>
+
+</body>
+</html>

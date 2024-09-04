@@ -1338,5 +1338,15 @@
     "hours_of_Operation": "6:30AM-sunset",
     "latitude": 34.095802,
     "longitude": -118.71117
+  },
+  {
+    "name": "Test Saad Fayyaz",
+    "description": "Hollywood Reservoir (Lake Hollywood) is circled by a paved service road that walkers, joggers, and bikers can use to get lakeside exercise with Hollywood views. The reservoir is located in the hills west of Griffith Park below Cahuenga Peak and Mount Lee (whose summit is world famous for the large white letters that spell HOLLYWOOD). Numerous views of the Hollywood Sign appear on the 3.5-mile loop around Hollywood Reservoir (with 50 feet of easy elevation change). Unfortunately, most views of the reservoir come through chain-link fences that separate the trail from the water everywhere except Mulholland Dam, which offers clear, classic views across the lake toward the Hollywood Sign.",
+    "website": "https://www.hikespeak.com/trails/lake-hollywood-reservoir-loop-los-angeles/",
+    "email": null,
+    "phone": "(818) 243-1145",
+    "hours_of_Operation": "6:30AM-sunset",
+    "latitude": 25.381929,
+    "longitude": 68.373039
   }
 ]
