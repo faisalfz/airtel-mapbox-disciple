@@ -9,10 +9,17 @@
     <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.0.0/mapbox-gl-directions.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.0.0/mapbox-gl-directions.css" rel="stylesheet" />
     <style>
-        body { margin: 0; padding: 0; }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { margin: 0; padding: 0;
+        }
+
+        * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; height: 100%; }
 
+        /* Styles for the select box container */
         #locationDropdown {
             position: absolute;
             top: 10px;
@@ -25,28 +32,19 @@
             width: 220px;
         }
 
-        #locationSelect, #locationSearch {
+        /* Styles for the select box itself */
+        #locationSelect {
             width: 100%;
             padding: 10px;
             font-size: 14px;
             border: 2px solid #0078a8;
             border-radius: 5px;
             outline: none;
-            margin-bottom: 10px;
         }
 
-        .mapboxgl-popup-content {
-            height: 400px;
-            overflow-y: auto;
-        }
-
-        /* Hide directions control on mobile */
+        /* Hide directions panel on small devices */
         @media (max-width: 768px) {
             .mapboxgl-ctrl-directions {
-                display: none !important;
-            }
-
-            .mapboxgl-ctrl-directions .directions-control {
                 display: none !important;
             }
 
@@ -88,7 +86,6 @@
 <body>
 
 <div id="locationDropdown">
-    <input type="text" id="locationSearch" placeholder="Search location..." />
     <select id="locationSelect">
         <option value="">Choose a location</option>
     </select>
@@ -99,6 +96,7 @@
 <script>
     mapboxgl.accessToken = 'pk.eyJ1IjoiZmFpc2FsZmlhejQwIiwiYSI6ImNtMG13bzIzajA3MDYybXM5d2dkaTBsaTYifQ.rYNtiYU6AvtLFp7H3A7b0g'; // Replace with your Mapbox access token
 
+    // Initialize Mapbox map
     const map = new mapboxgl.Map({
         container: 'map',
         center: [0, 0],
@@ -147,70 +145,61 @@
 
     let userLocation = null;
     let destinationLocation = null;
-    let directions = null;
+    let directions = new MapboxDirections({
+        accessToken: mapboxgl.accessToken,
+        unit: 'metric',
+        profile: 'mapbox/driving'
+    });
 
     map.on('load', () => {
         map.addImage('pulsing-dot', pulsingDot, { pixelRatio: 2 });
 
-        fetch('locations.json')
+        // Fetch the JSON location data
+        fetch('locations.json') // Make sure this points to your actual JSON file path
             .then(response => response.json())
             .then(data => {
                 const locationSelect = document.getElementById('locationSelect');
-                const locationSearch = document.getElementById('locationSearch');
 
-                function populateLocations(locations) {
-                    locationSelect.innerHTML = '<option value="">Choose a location</option>';
-                    locations.forEach(location => {
-                        const option = document.createElement('option');
-                        option.value = JSON.stringify([location.longitude, location.latitude]);
-                        option.text = location.name;
-                        locationSelect.appendChild(option);
+                // Populate dropdown and add markers for locations
+                data.forEach(location => {
+                    const option = document.createElement('option');
+                    option.value = JSON.stringify([location.longitude, location.latitude]);
+                    option.text = location.name;
+                    locationSelect.appendChild(option);
 
-                        const marker = new mapboxgl.Marker()
-                            .setLngLat([location.longitude, location.latitude])
-                            .setPopup(new mapboxgl.Popup().setHTML(createLocationDetails(location)))
-                            .addTo(map);
-                    });
-                }
+                    // Create location details for popup (skip empty fields)
+                    function createLocationDetails(location) {
+                        let details = `<article class="location-detail">
+                            <h3>${location.name}</h3>`;
+                        
+                        if (location.website) {
+                            details += `<p><strong>Website:</strong> <a href="${location.website}" target="_blank">${location.website}</a></p>`;
+                        }
+                        if (location.phone) {
+                            details += `<p><strong>Phone:</strong> ${location.phone}</p>`;
+                        }
+                        if (location.email) {
+                            details += `<p><strong>Email:</strong> <a href="mailto:${location.email}">${location.email}</a></p>`;
+                        }
+                        if (location.hours_of_operation) {
+                            details += `<p><strong>Hours:</strong> ${location.hours_of_operation}</p>`;
+                        }
+                        if (location.description) {
+                            details += `<p>${location.description}</p>`;
+                        }
 
-                function createLocationDetails(location) {
-        let details = `<article class="location-detail">
-                <h3>${location.name}</h3>`;
+                        details += `</article>`;
+                        return details;
+                    }
 
-        if (location.website) {
-          details += `<p><strong>Website:</strong> <a href="${location.website}" target="_blank">${location.website}</a></p>`;
-        }
-        if (location.phone) {
-          details += `<p><strong>Phone:</strong> ${location.phone}</p>`;
-        }
-        if (location.email) {
-          details += `<p><strong>Email:</strong> <a href="mailto:${location.email}">${location.email}</a></p>`;
-        }
-        if (location.hours_of_Operation) {
-          details += `<p><strong>Hours:</strong> ${location.hours_of_Operation}</p>`;
-        }
-        if (location.description) {
-          details += `<p class="description">${location.description.substring(
-            0,
-            100
-          )}<span class="show-more"> Show more</span></p>
-                            <p class="full-description">${
-                              location.description
-                            }</p>`;
-        }
-
-        details += `</article>`;
-        return details;
-      }
-
-                populateLocations(data);
-
-                locationSearch.addEventListener('input', function () {
-                    const query = this.value.toLowerCase();
-                    const filteredLocations = data.filter(location => location.name.toLowerCase().includes(query));
-                    populateLocations(filteredLocations);
+                    // Add markers for each location with popup details
+                    const marker = new mapboxgl.Marker()
+                        .setLngLat([location.longitude, location.latitude])
+                        .setPopup(new mapboxgl.Popup().setHTML(createLocationDetails(location)))
+                        .addTo(map);
                 });
 
+                // Add an event listener to the dropdown
                 locationSelect.addEventListener('change', function () {
                     const selectedCoords = JSON.parse(this.value);
                     if (selectedCoords && userLocation) {
@@ -220,42 +209,69 @@
                 });
             });
 
+        // Geolocation: Display user's current location
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(position => {
                 userLocation = [position.coords.longitude, position.coords.latitude];
+
+                // Add user's pulsing marker
                 map.addSource('user-location', {
                     'type': 'geojson',
-                    'data': { 'type': 'Feature', 'geometry': { 'type': 'Point', 'coordinates': userLocation } }
+                    'data': {
+                        'type': 'Feature',
+                        'geometry': {
+                            'type': 'Point',
+                            'coordinates': userLocation
+                        }
+                    }
                 });
+
                 map.addLayer({
                     'id': 'user-location-layer',
                     'type': 'symbol',
                     'source': 'user-location',
-                    'layout': { 'icon-image': 'pulsing-dot' }
+                    'layout': {
+                        'icon-image': 'pulsing-dot'
+                    }
                 });
+
+                // Center map to user's location
                 map.setCenter(userLocation);
                 map.setZoom(13);
             });
         }
     });
 
+    // Function to show the route between user's location and selected destination
     function showRoute(start, end) {
-        if (!directions) {
-            directions = new MapboxDirections({
-                accessToken: mapboxgl.accessToken,
-                unit: 'metric',
-                profile: 'mapbox/driving'
-            });
-
-            // Add directions control to the map
-            map.addControl(directions, 'top-left');
+        // Remove any previous directions control from the map
+        if (map.hasControl(directions)) {
+            map.removeControl(directions);
         }
 
-        // Set the route from start (user location) to end (selected location)
+        // Set new directions control
+        directions = new MapboxDirections({
+            accessToken: mapboxgl.accessToken,
+            unit: 'metric',
+            profile: 'mapbox/driving'
+        });
+
+        // Add new directions control to the map
+        map.addControl(directions, 'top-left');
+
+        // Set origin (user's location) and destination (selected location)
         directions.setOrigin(start);
         directions.setDestination(end);
 
-        map.fitBounds([start, end], { padding: { top: 100, bottom: 100, left: 100, right: 100 } });
+        // Fit map to show both user location and destination
+        map.fitBounds([start, end], {
+            padding: {top: 100, bottom: 100, left: 100, right: 100}
+        });
+
+        // Automatically adjust zoom for mobile devices
+        if (window.innerWidth <= 768) {
+            map.setZoom(11); // Adjust the zoom level to a lower zoom for mobile view
+        }
     }
 </script>
 

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responsive Map with Searchable Dropdown and Route</title>
+    
+    <!-- Include Mapbox CSS and JS -->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.0.0/mapbox-gl-directions.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.0.0/mapbox-gl-directions.css" rel="stylesheet" />
+
+    <!-- Include Select2 CSS and JS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; height: 100%; }
+
+        /* Styles for the select box container */
+        #locationDropdown {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1;
+            padding: 10px;
+            background-color: white;
+            border-radius: 5px;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+            width: 220px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            #locationDropdown {
+                width: 100%;
+                top: 0;
+                left: 0;
+                right: 0;
+                margin: 0;
+                padding: 15px;
+                border-radius: 0;
+                box-shadow: none;
+            }
+
+            .select2-container {
+                width: 100% !important;
+            }
+        }
+
+        /* Hide directions panel on small devices */
+        @media (max-width: 768px) {
+            .mapboxgl-ctrl-directions {
+                display: none !important;
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+<div id="locationDropdown">
+    <select id="locationSelect" style="width:100%;">
+        <option value="">Choose a location</option>
+    </select>
+</div>
+
+<div id="map"></div>
+
+<script>
+    mapboxgl.accessToken = 'pk.eyJ1IjoiZmFpc2FsZmlhejQwIiwiYSI6ImNtMG13bzIzajA3MDYybXM5d2dkaTBsaTYifQ.rYNtiYU6AvtLFp7H3A7b0g'; // Replace with your Mapbox access token
+
+    // Initialize Mapbox map
+    const map = new mapboxgl.Map({
+        container: 'map',
+        center: [0, 0],
+        zoom: 2,
+        style: 'mapbox://styles/mapbox/streets-v12'
+    });
+
+    const size = 200;
+    const pulsingDot = {
+        width: size,
+        height: size,
+        data: new Uint8Array(size * size * 4),
+        onAdd: function () {
+            const canvas = document.createElement('canvas');
+            canvas.width = this.width;
+            canvas.height = this.height;
+            this.context = canvas.getContext('2d');
+        },
+        render: function () {
+            const duration = 1000;
+            const t = (performance.now() % duration) / duration;
+            const radius = (size / 2) * 0.3;
+            const outerRadius = (size / 2) * 0.7 * t + radius;
+            const context = this.context;
+
+            context.clearRect(0, 0, this.width, this.height);
+            context.beginPath();
+            context.arc(this.width / 2, this.height / 2, outerRadius, 0, Math.PI * 2);
+            context.fillStyle = `rgba(255, 200, 200, ${1 - t})`;
+            context.fill();
+
+            context.beginPath();
+            context.arc(this.width / 2, this.height / 2, radius, 0, Math.PI * 2);
+            context.fillStyle = 'rgba(255, 100, 100, 1)';
+            context.strokeStyle = 'white';
+            context.lineWidth = 2 + 4 * (1 - t);
+            context.fill();
+            context.stroke();
+
+            this.data = context.getImageData(0, 0, this.width, this.height).data;
+
+            map.triggerRepaint();
+            return true;
+        }
+    };
+
+    let userLocation = null;
+    let destinationLocation = null;
+    let directions = new MapboxDirections({
+        accessToken: mapboxgl.accessToken,
+        unit: 'metric',
+        profile: 'mapbox/driving'
+    });
+
+    map.on('load', () => {
+        map.addImage('pulsing-dot', pulsingDot, { pixelRatio: 2 });
+
+        // Fetch the JSON location data
+        fetch('locations.json') // Make sure this points to your actual JSON file path
+            .then(response => response.json())
+            .then(data => {
+                const locationSelect = document.getElementById('locationSelect');
+
+                // Populate dropdown and add markers for locations
+                data.forEach(location => {
+                    const option = document.createElement('option');
+                    option.value = JSON.stringify([location.longitude, location.latitude]);
+                    option.text = location.name;
+                    locationSelect.appendChild(option);
+
+                    // Create location details for popup (skip empty fields)
+                    function createLocationDetails(location) {
+                        let details = `<article class="location-detail">
+                            <h3>${location.name}</h3>`;
+                        
+                        if (location.website) {
+                            details += `<p><strong>Website:</strong> <a href="${location.website}" target="_blank">${location.website}</a></p>`;
+                        }
+                        if (location.phone) {
+                            details += `<p><strong>Phone:</strong> ${location.phone}</p>`;
+                        }
+                        if (location.email) {
+                            details += `<p><strong>Email:</strong> <a href="mailto:${location.email}">${location.email}</a></p>`;
+                        }
+                        if (location.hours_of_operation) {
+                            details += `<p><strong>Hours:</strong> ${location.hours_of_operation}</p>`;
+                        }
+                        if (location.description) {
+                            details += `<p>${location.description}</p>`;
+                        }
+
+                        details += `</article>`;
+                        return details;
+                    }
+
+                    // Add markers for each location with popup details
+                    const marker = new mapboxgl.Marker()
+                        .setLngLat([location.longitude, location.latitude])
+                        .setPopup(new mapboxgl.Popup().setHTML(createLocationDetails(location)))
+                        .addTo(map);
+                });
+
+                // Initialize Select2 on the select element for searchable dropdown
+                $('#locationSelect').select2();
+
+                // Add an event listener to the dropdown
+                $('#locationSelect').on('change', function () {
+                    const selectedCoords = JSON.parse($(this).val());
+                    if (selectedCoords && userLocation) {
+                        destinationLocation = selectedCoords;
+                        showRoute(userLocation, destinationLocation);
+                    }
+                });
+            });
+
+        // Geolocation: Display user's current location
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(position => {
+                userLocation = [position.coords.longitude, position.coords.latitude];
+
+                // Add user's pulsing marker
+                map.addSource('user-location', {
+                    'type': 'geojson',
+                    'data': {
+                        'type': 'Feature',
+                        'geometry': {
+                            'type': 'Point',
+                            'coordinates': userLocation
+                        }
+                    }
+                });
+
+                map.addLayer({
+                    'id': 'user-location-layer',
+                    'type': 'symbol',
+                    'source': 'user-location',
+                    'layout': {
+                        'icon-image': 'pulsing-dot'
+                    }
+                });
+
+                // Center map to user's location
+                map.setCenter(userLocation);
+                map.setZoom(13);
+            });
+        }
+    });
+
+    // Function to show the route between user's location and selected destination
+    function showRoute(start, end) {
+        // Remove any previous directions control from the map
+        if (map.hasControl(directions)) {
+            map.removeControl(directions);
+        }
+
+        // Set new directions control
+        directions = new MapboxDirections({
+            accessToken: mapboxgl.accessToken,
+            unit: 'metric',
+            profile: 'mapbox/driving'
+        });
+
+        // Add new directions control to the map
+        map.addControl(directions, 'top-left');
+
+        // Set origin (user's location) and destination (selected location)
+        directions.setOrigin(start);
+        directions.setDestination(end);
+
+        // Fit map to show both user location and destination
+        map.fitBounds([start, end], {
+            padding: {top: 100, bottom: 100, left: 100, right: 100}
+        });
+
+        // Automatically adjust zoom for mobile devices
+        if (window.innerWidth <= 768) {
+            map.setZoom(11); // Adjust the zoom level to a lower zoom for mobile view
+        }
+    }
+</script>
+
+</body>
+</html>
