@@ -131,7 +131,7 @@
         map.addImage('pulsing-dot', pulsingDot, { pixelRatio: 2 });
 
         // Fetch the JSON location data
-        fetch('locations.json') // Make sure this points to your actual JSON file path
+        fetch('https://gist.githubusercontent.com/faisalfz/2031ccaf23caf4d12b65f978a400329c/raw') // Make sure this points to your actual JSON file path
             .then(response => response.json())
             .then(data => {
                 const locationSelect = document.getElementById('locationSelect');
