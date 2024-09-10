@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map with Fixed Height Popup and Highlight</title>
+    <!-- Mapbox CSS -->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css" rel="stylesheet" />
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden; /* Prevent full-page scroll, allow only div scroll */
+        }
+
+        #container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh; /* Full height of the viewport */
+            overflow: hidden;
+        }
+
+        #location-search {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        #map {
+            height: 600px; /* Fixed height for the map */
+            width: 100%;
+            flex-shrink: 0; /* Prevent the map from shrinking */
+        }
+
+        #content {
+            overflow-y: auto; /* Enable scrolling if content exceeds viewport height */
+            height: calc(100vh - 600px); /* Height is the remaining space after the fixed map height */
+        }
+
+        article.location-detail {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 200px; /* Fixed height for the popup */
+            overflow-y: auto; /* Add scrollbar for overflow */
+        }
+
+        .location-detail h3, .location-detail p {
+            margin: 0;
+            padding: 0;
+        }
+
+        .location-detail h3 {
+            font-size: 14px;
+            line-height: 16px;
+            font-weight: 700;
+        }
+
+        .location-detail p {
+            font-size: 12px;
+            font-weight: 100;
+            color: rgb(82, 81, 81);
+        }
+
+        .show-more {
+            color: blue;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .mapboxgl-marker.highlight {
+            background-color: red !important; /* Ensure the marker gets highlighted */
+            border: 2px solid #fff;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <!-- Scrollable content -->
+        <div id="content">
+            <!-- Search Box -->
+            <select id="location-search">
+                <option value="">Select a location</option>
+            </select>
+        </div>
+
+        <!-- Map Container -->
+        <div id="map"></div>
+    </div>
+
+    <!-- Mapbox JS -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js"></script>
+
+    <script>
+        // Mapbox Access Token (Replace 'YOUR_ACCESS_TOKEN' with your Mapbox token)
+        mapboxgl.accessToken = 'pk.eyJ1IjoiZmFpc2FsZmlhejQwIiwiYSI6ImNtMG13bzIzajA3MDYybXM5d2dkaTBsaTYifQ.rYNtiYU6AvtLFp7H3A7b0g';
+
+        // Initialize Mapbox map
+        var map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v11', // Mapbox style
+            center: [-118.2437, 34.0522], // Default center: Los Angeles
+            zoom: 10
+        });
+
+        // Add zoom and rotation controls to the map.
+        map.addControl(new mapboxgl.NavigationControl());
+
+        // Array to hold markers and references for highlighting
+        var markers = [];
+
+        // Function to create the "Show More" feature for descriptions longer than 20 words
+        function createDescriptionWithShowMore(description) {
+            const words = description.split(' ');
+            if (words.length > 20) {
+                const firstPart = words.slice(0, 20).join(' ');
+                const restPart = words.slice(20).join(' ');
+                return `<p>${firstPart}... <span class="show-more">Show More</span><span class="rest-of-description" style="display:none;"> ${restPart}</span></p>`;
+            } else {
+                return `<p>${description}</p>`;
+            }
+        }
+
+        // Function to handle the "Show More" click
+        function enableShowMore() {
+            document.querySelectorAll('.show-more').forEach(showMore => {
+                showMore.addEventListener('click', function () {
+                    const restOfDescription = this.nextElementSibling;
+                    restOfDescription.style.display = 'inline';
+                    this.style.display = 'none'; // Hide the "Show More" link
+                });
+            });
+        }
+
+        // Fetch JSON data from locations.json
+        fetch('locations.json')
+            .then(response => response.json())
+            .then(data => {
+                var select = document.getElementById('location-search');
+
+                // Add each location as an option in the select dropdown
+                data.forEach(location => {
+                    // Add option to select dropdown
+                    var option = document.createElement('option');
+                    option.value = location.latitude + ',' + location.longitude;
+                    option.text = location.name;
+                    select.appendChild(option);
+
+                    // Construct the popup content: all fields first, then description
+                    var popupContent = '<article class="location-detail"><h3>' + location.name + '</h3>';
+                    for (let key in location) {
+                        if (location[key] && key !== 'latitude' && key !== 'longitude' && key !== 'name' && key !== 'description') {
+                          if (key === 'website') {
+                                // Create a clickable link for the website field
+                                popupContent += `<p><strong>${key}:</strong> <a href="${location[key]}" target="_blank">${location[key]}</a></p>`;
+                            } else {
+                                popupContent += '<p><strong>' + key + ':</strong> ' + location[key] + '</p>';
+                            }
+                        }
+                    }
+
+                    // Handle description field with "Show More" if necessary
+                    popupContent += createDescriptionWithShowMore(location.description || 'No description available');
+                    popupContent += '</article>';
+
+                    // Create a marker for each location using default Mapbox markers
+                    var marker = new mapboxgl.Marker()
+                        .setLngLat([location.longitude, location.latitude])
+                        .setPopup(new mapboxgl.Popup().setHTML(popupContent)) // Show full details in popup
+                        .addTo(map);
+
+                    // Store marker reference for later use
+                    markers.push(marker);
+
+                    // Enable "Show More" functionality when the popup is opened
+                    marker.getPopup().on('open', enableShowMore);
+
+                    // Event to center the marker when clicked
+                    marker.getElement().addEventListener('click', function () {
+                        map.flyTo({
+                            center: [location.longitude, location.latitude],
+                            zoom: 20, // Adjust the zoom level
+                            essential: true
+                        });
+
+                        // Highlight the selected marker
+                        markers.forEach(m => m.getElement().classList.remove('highlight')); // Remove highlight from all markers
+                        marker.getElement().classList.add('highlight'); // Highlight the clicked marker
+                    });
+                });
+
+                // Event listener for the search select box
+                select.addEventListener('change', function() {
+                    var coordinates = this.value.split(',');
+                    if (coordinates.length === 2) {
+                        var lat = parseFloat(coordinates[0]);
+                        var lng = parseFloat(coordinates[1]);
+
+                        // Determine zoom level based on device
+                        var isMobile = window.innerWidth <= 600;
+                        var zoomLevel = isMobile ? 18 : 14; // Zoom in closer on mobile
+
+                        // Fly to the selected location with a proper zoom level
+                        map.flyTo({
+                            center: [lng, lat],
+                            zoom: zoomLevel, // Adjust zoom level
+                            essential: true // This ensures the animation is smooth
+                        });
+
+                        // Highlight the selected marker
+                        markers.forEach(marker => {
+                            var markerLngLat = marker.getLngLat();
+                            if (markerLngLat.lat === lat && markerLngLat.lng === lng) {
+                                marker.getPopup().open(); // Open the popup for the selected marker
+                                marker.getElement().classList.add('highlight'); // Highlight the marker
+                                enableShowMore(); // Enable "Show More" on popup open
+                            } else {
+                                marker.getElement().classList.remove('highlight'); // Remove highlight from other markers
+                            }
+                        });
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+            });
+    </script>
+</body>
+</html>
