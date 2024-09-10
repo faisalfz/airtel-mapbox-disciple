@@ -152,7 +152,7 @@
     map.on('load', () => {
         map.addImage('pulsing-dot', pulsingDot, { pixelRatio: 2 });
 
-        fetch('locations.json')
+        fetch('https://gist.githubusercontent.com/faisalfz/2031ccaf23caf4d12b65f978a400329c/raw')
             .then(response => response.json())
             .then(data => {
                 const locationSelect = document.getElementById('locationSelect');
@@ -190,7 +190,7 @@
           details += `<p><strong>Hours:</strong> ${location.hours_of_Operation}</p>`;
         }
         if (location.description) {
-          details += `<p class="description">${location.description.substring(
+          details += `<p class="description"><strong>Description:</strong>?${location.description.substring(
             0,
             100
           )}<span class="show-more"> Show more</span></p>
