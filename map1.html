@@ -17,7 +17,7 @@
         #container {
             display: flex;
             flex-direction: column;
-            height: 100vh; /* Full height of the viewport */
+            height: 100vh;
             overflow: hidden;
         }
 
@@ -30,14 +30,17 @@
         }
 
         #map {
-            min-height: calc(100vh - 60px);
+            height: 100%;
             width: 100%;
-            flex-shrink: 0; /* Prevent the map from shrinking */
+            flex-grow: 1;
+            flex-shrink: 1; /* Allow map to resize based on available space */
         }
 
         #content {
-            overflow-y: auto; /* Enable scrolling if content exceeds viewport height */
-            height: calc(100vh - 600px); /* Height is the remaining space after the fixed map height */
+            overflow-y: auto;
+            padding: 10px;
+            box-sizing: border-box;
+            max-height: 30%; /* Give content area 30% of the viewport height */
         }
 
         article.location-detail {
@@ -77,6 +80,49 @@
             border-radius: 50%;
             width: 25px;
             height: 25px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            #location-search {
+                font-size: 14px;
+                padding: 8px;
+                min-height: 50px;
+            }
+
+            #content {
+                max-height: 40%; /* Allow more space for the content on smaller screens */
+                font-size: 14px;
+            }
+
+            .location-detail h3 {
+                font-size: 13px;
+            }
+
+            .location-detail p {
+                font-size: 11px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #location-search {
+                font-size: 12px;
+                padding: 5px;
+                min-height: 45px;
+            }
+
+            #content {
+                max-height: 50%; /* On very small screens, give more room to the content */
+                font-size: 12px;
+            }
+
+            .location-detail h3 {
+                font-size: 12px;
+            }
+
+            .location-detail p {
+                font-size: 10px;
+            }
         }
     </style>
 </head>
