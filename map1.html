@@ -185,7 +185,7 @@
         }
 
         // Fetch JSON data from locations.json
-        fetch('locations.json')
+        fetch('https://96eb-111-88-86-241.ngrok-free.app/locations')
             .then(response => response.json())
             .then(data => {
                 var select = document.getElementById('location-search');
