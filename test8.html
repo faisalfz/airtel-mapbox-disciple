@@ -9,14 +9,7 @@
     <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.0.0/mapbox-gl-directions.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.0.0/mapbox-gl-directions.css" rel="stylesheet" />
     <style>
-        body { margin: 0; padding: 0;
-        }
-
-        * {
-          box-sizing: border-box;
-          margin: 0;
-          padding: 0;
-        }
+        body { margin: 0; padding: 0; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; height: 100%; }
 
         /* Styles for the select box container */
@@ -28,7 +21,7 @@
             padding: 10px;
             background-color: white;
             border-radius: 5px;
-            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.5);
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
             width: 220px;
         }
 
@@ -42,12 +35,29 @@
             outline: none;
         }
 
-        /* Hide directions panel on small devices */
-        @media (max-width: 768px) {
-            .mapboxgl-ctrl-directions {
-                display: none !important;
-            }
+        /* Popup content styles */
+        .mapboxgl-popup-content {
+            max-height: 200px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #888 #f1f1f1;
+        }
 
+        /* Scrollbar customization */
+        .mapboxgl-popup-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        .mapboxgl-popup-content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .mapboxgl-popup-content::-webkit-scrollbar-thumb {
+            background-color: #888;
+            border-radius: 10px;
+            border: 2px solid #f1f1f1;
+        }
+
+        /* Media query for small screens (mobile devices) */
+        @media (max-width: 768px) {
             #locationDropdown {
                 width: 100%;
                 top: 0;
@@ -69,6 +79,12 @@
             }
         }
 
+        @media (max-width: 768px) {
+            .mapboxgl-ctrl-directions {
+                display: none !important;
+            }}
+
+        /* Media query for very small devices (mobile phones, small screen) */
         @media (max-width: 480px) {
             #locationSelect {
                 font-size: 18px;
@@ -185,7 +201,7 @@
                             details += `<p><strong>Hours:</strong> ${location.hours_of_operation}</p>`;
                         }
                         if (location.description) {
-                            details += `<p>${location.description}</p>`;
+                            details += `<p><strong>Description:</strong>${location.description}</p>`;
                         }
 
                         details += `</article>`;
