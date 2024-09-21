@@ -107,6 +107,12 @@
     </select>
 </div>
 
+<div id="locationPrompt" style="display: none; position: absolute; top: 10px; right: 10px; z-index: 1000; background-color: white; padding: 15px; border-radius: 5px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);">
+    <p>Please enable location services to use this feature.</p>
+    <button id="enableLocationButton">Open Settings</button>
+</div>
+
+
 <div id="map"></div>
 
 <script>
@@ -289,6 +295,32 @@
             map.setZoom(11); // Adjust the zoom level to a lower zoom for mobile view
         }
     }
+
+    if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(position => {
+        userLocation = [position.coords.longitude, position.coords.latitude];
+
+        // Add user's pulsing marker, center map, etc.
+        // (Existing code remains the same)
+
+    }, error => {
+        if (error.code === error.PERMISSION_DENIED) {
+            // Show the custom notification
+            document.getElementById('locationPrompt').style.display = 'block';
+
+            // Add event listener to the button
+            document.getElementById('enableLocationButton').onclick = function() {
+                // Redirect the user to settings (this won't work directly for web)
+                alert("Please enable location services in your device settings."); // Inform users they need to do this manually
+            };
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+            alert("Location information is unavailable. Please try again later.");
+        } else {
+            alert("An unknown error occurred while retrieving your location.");
+        }
+    });
+}
+
 </script>
 
 </body>
