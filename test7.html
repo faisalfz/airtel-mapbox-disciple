@@ -166,7 +166,7 @@
         map.addImage('pulsing-dot', pulsingDot, { pixelRatio: 2 });
 
         // Fetch the JSON location data
-        fetch('locations.json') // Make sure this points to your actual JSON file path
+        fetch('https://airtable-mapbox-backend-production.up.railway.app/locations') // Make sure this points to your actual JSON file path
             .then(response => response.json())
             .then(data => {
                 const locationSelect = document.getElementById('locationSelect');
