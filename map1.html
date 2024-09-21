@@ -185,7 +185,7 @@
         }
 
         // Fetch JSON data from locations.json
-        fetch('https://96eb-111-88-86-241.ngrok-free.app/locations')
+        fetch('https://airtable-mapbox-backend-production.up.railway.app/locations', {method: "GET"})
             .then(response => response.json())
             .then(data => {
                 var select = document.getElementById('location-search');

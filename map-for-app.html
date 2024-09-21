@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Map</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.7.7/axios.min.js" integrity="sha512-DdX/YwF5e41Ok+AI81HI8f5/5UsoxCVT9GKYZRIzpLxb8Twz4ZwPPX+jQMwMhNQ9b5+zDEefc+dcvQoPWGNZ3g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <style>
         #map { height: 600px; }
         article.location-detail {
@@ -44,18 +45,28 @@
         }).addTo(map);
 
         // Fetch JSON data from locations.json
-        fetch('locations.json')
-            .then(response => response.json())
-            .then(data => {
-                // Add markers from JSON data
-                data.forEach(location => {
-                    var marker = L.marker([location.latitude, location.longitude]).addTo(map);
-                    marker.bindPopup('<article class="location-detail"><h3>' + location.name + '</h3>' + '<p>' + (location.description ? location.description : '') + '</p></article>');
-                });
-            })
-            .catch(error => {
-                console.error('Error fetching data:', error);
-            });
+        async function fetchLocations() {
+  try {
+    const response = await axios.get('https://airtable-mapbox-backend-production.up.railway.app/locations');
+    console.log("response: ", response);
+    console.log('Response Body:', JSON.stringify(response.data)); // Log the body specifically
+
+    const data = response.data; // `axios` response data is already parsed as JSON
+    console.log("Data: ", data);
+
+    // Add markers from JSON data
+    data.forEach(location => {
+      var marker = L.marker([location.latitude, location.longitude]).addTo(map);
+      marker.bindPopup('<article class="location-detail"><h3>' + location.name + '</h3>' + '<p>' + (location.description ? location.description : '') + '</p></article>');
+    });
+  } catch (error) {
+    console.error('Error fetching data:', error);
+  }
+}
+
+// Call the async function
+fetchLocations();
+
     </script>
 </body>
 </html>
